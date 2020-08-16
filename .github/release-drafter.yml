@@ -8,6 +8,7 @@ categories:
       - 'feature'  # 006b75
       - 'enhancement'  # ededed
       - 'performance'  # 555555
+      - 'test'
   - title: 'Bugfixes'
     labels:
       - 'fix'
