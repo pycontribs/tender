@@ -58,12 +58,16 @@ class Config(SimpleNamespace):
 
     def load_config(self, config_file):
         config_file = os.path.expanduser(config_file)
-        with open(config_file, "r") as stream:
-            try:
-                return yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                _logger.error(exc)
-                sys.exit(2)
+        try:
+            with open(config_file, "r") as stream:
+                try:
+                    return yaml.safe_load(stream)
+                except yaml.YAMLError as exc:
+                    _logger.error(exc)
+                    sys.exit(2)
+        except FileNotFoundError:
+            _logger.warning("Config file %s not found, defaulting to empty.", config_file)
+            return {}
 
 
 class Tender(object):
