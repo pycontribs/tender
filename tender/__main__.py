@@ -50,9 +50,9 @@ class Config(SimpleNamespace):
 
     def __init__(self):
         self.labels = {}
-        for l in self.load_config(".github/labels.yml"):
-            self.labels[l["name"]] = SimpleNamespace(
-                color=l["color"], description=l["description"]
+        for label in self.load_config(".github/labels.yml"):
+            self.labels[label["name"]] = SimpleNamespace(
+                color=label["color"], description=label["description"]
             )
         self.release_drafter = self.load_config(".github/release-drafter.yml")
 
@@ -118,22 +118,25 @@ class Tender(object):
 
         _logger.info("Auditing repository labels")
         _logger.debug(self.cfg.labels)
-        existing_labels = [l.name for l in self.repo.labels()]
-        for l, lv in self.cfg.labels.items():
-            if l not in existing_labels:
-                _logger.warning("Adding label '%s'" % l)
-                self.repo.create_label(l, lv.color, lv.description)
-        for l in self.repo.labels():
-            if l.name in self.cfg.labels:
-                cl = self.cfg.labels[l.name]
-                if l.color != cl.color or l.description != cl.description:
-                    _logger.warning("Updating label '%s' attributes", l.name)
-                    l.update(
-                        l.name, self.cfg.labels[l.name].color, self.cfg.labels[l.name].description
+        existing_labels = [x.name for x in self.repo.labels()]
+        for label, lv in self.cfg.labels.items():
+            if label not in existing_labels:
+                _logger.warning("Adding label '%s'" % label)
+                self.repo.create_label(label, lv.color, lv.description)
+        for label in self.repo.labels():
+            if label.name in self.cfg.labels:
+                cl = self.cfg.labels[label.name]
+                if label.color != cl.color or label.description != cl.description:
+                    _logger.warning("Updating label '%s' attributes", label.name)
+                    label.update(
+                        label.name,
+                        self.cfg.labels[label.name].color,
+                        self.cfg.labels[label.name].description,
                     )
             else:
                 _logger.error(
-                    "Unknown label '%s' found defined, you may want to rename or remove.", l.name
+                    "Unknown label '%s' found defined, you may want to rename or remove.",
+                    label.name,
                 )
 
 
