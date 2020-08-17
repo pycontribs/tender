@@ -12,7 +12,7 @@ import sys
 from types import SimpleNamespace
 
 import git
-from github3 import GitHub
+from github import Github
 import yaml
 import tender  # noqa
 
@@ -75,11 +75,10 @@ class Tender(object):
         self.cfg = Config()
         self.repo_name = repo
         self.org_name = org
-        self.gh = GitHub()
         token = os.environ.get("HOMEBREW_GITHUB_API_TOKEN")
-        self.gh.login(token=token)
-        self.repo = self.gh.repository(org, repo)
-        self.pulls = self.repo.pull_requests(state="all")
+        self.gh = Github(login_or_token=token)
+        self.repo = self.gh.get_repo(f"{org}/{repo}")
+        self.pulls = self.repo.get_pulls(state="all")
 
         # required_labels is a list of labels from which at least one needs to
         # be present on each PR, and only one.
@@ -103,7 +102,7 @@ class Tender(object):
             msg = "{}: [{}] {}".format(
                 link(pr.html_url, "PR #{}".format(pr.number)), pr.state, pr.title
             )
-            pr_labels = [p["name"] for p in pr.labels]
+            pr_labels = [p.name for p in pr.get_labels()]
             if len(self.required_labels.intersection(pr_labels)) == 0:
                 msg += "\n\tShould have at least one label out of {} but found: {}".format(
                     ", ".join(self.required_labels), ", ".join(pr_labels)
@@ -118,12 +117,12 @@ class Tender(object):
 
         _logger.info("Auditing repository labels")
         _logger.debug(self.cfg.labels)
-        existing_labels = [x.name for x in self.repo.labels()]
+        existing_labels = [x.name for x in self.repo.get_labels()]
         for label, lv in self.cfg.labels.items():
             if label not in existing_labels:
                 _logger.warning("Adding label '%s'" % label)
                 self.repo.create_label(label, lv.color, lv.description)
-        for label in self.repo.labels():
+        for label in self.repo.get_labels():
             if label.name in self.cfg.labels:
                 cl = self.cfg.labels[label.name]
                 if label.color != cl.color or label.description != cl.description:
