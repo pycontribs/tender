@@ -1,6 +1,7 @@
 [MESSAGES CONTROL]
 
 disable =
+    bad-continuation, # https://github.com/PyCQA/pylint/issues/2944
     # TODO(ssbarnea): remove temporary skips adding during initial adoption:
     import-error,
     missing-class-docstring,

@@ -1,20 +1,21 @@
 #!/usr/bin/env python
-"""CLI Interface of Tender"""
-from tender import __version__
-from blessings import Terminal
-from copy import deepcopy
-import click
-from click_help_colors import HelpColorsGroup, HelpColorsCommand, version_option
-import giturlparse
+"""CLI Interface of Tender tool"""
 import json
 import logging
 import os
 import sys
+from copy import deepcopy
 from types import SimpleNamespace
 
+import click
 import git
-from github import Github
+import giturlparse
 import yaml
+from blessings import Terminal
+from click_help_colors import HelpColorsCommand, HelpColorsGroup, version_option
+from github import Github
+
+from tender import __version__
 
 term = Terminal()
 
@@ -67,7 +68,9 @@ class Config(SimpleNamespace):
                     _logger.error(exc)
                     sys.exit(2)
         except FileNotFoundError:
-            _logger.warning("Config file %s not found, defaulting to empty.", config_file)
+            _logger.warning(
+                "Config file %s not found, defaulting to empty.", config_file
+            )
             return {}
 
 
@@ -90,7 +93,9 @@ class Tender:
             if "labels" in category:
                 self.required_labels.update(category["labels"])
             else:
-                _logger.warning("%s category does not have any labels defined.", category)
+                _logger.warning(
+                    "%s category does not have any labels defined.", category
+                )
 
     def do_pulls(self):
         _logger.info("Auditing pull-requests")
@@ -101,7 +106,9 @@ class Tender:
             if not pull.is_merged() and pull.state == "closed":
                 continue
             msg = "{}: [{}] {}".format(
-                link(pull.html_url, "PR #{}".format(pull.number)), pull.state, pull.title
+                link(pull.html_url, "PR #{}".format(pull.number)),
+                pull.state,
+                pull.title,
             )
             pr_labels = [p.name for p in pull.get_labels()]
             if len(self.required_labels.intersection(pr_labels)) == 0:
@@ -126,7 +133,10 @@ class Tender:
         for label in self.repo.get_labels():
             if label.name in self.cfg.labels:
                 cfg_label = self.cfg.labels[label.name]
-                if label.color != cfg_label.color or label.description != cfg_label.description:
+                if (
+                    label.color != cfg_label.color
+                    or label.description != cfg_label.description
+                ):
                     _logger.warning("Updating label '%s' attributes", label.name)
                     label.update(
                         label.name,
@@ -161,7 +171,10 @@ def parsed(result):
 @click.option("--repo", "-r", default=None, help="GitHub Repository")
 @click.option("--org", "-o", default=None, help="GitHub Organization")
 @version_option(
-    version=__version__, prog_name="tender", version_color="green", prog_name_color="yellow"
+    version=__version__,
+    prog_name="tender",
+    version_color="green",
+    prog_name_color="yellow",
 )
 def cli(ctx, debug, repo, org):
     handler = logging.StreamHandler()
