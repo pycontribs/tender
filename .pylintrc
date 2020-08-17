@@ -1,0 +1,10 @@
+[MESSAGES CONTROL]
+
+disable =
+    # TODO(ssbarnea): remove temporary skips adding during initial adoption:
+    import-error,
+    missing-class-docstring,
+    missing-function-docstring,
+    missing-module-docstring,
+    too-few-public-methods,
+    wrong-import-order,

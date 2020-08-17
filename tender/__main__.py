@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""CLI Interface of Tender"""
 from tender import __version__
 from blessings import Terminal
 from copy import deepcopy
@@ -14,7 +15,6 @@ from types import SimpleNamespace
 import git
 from github import Github
 import yaml
-import tender  # noqa
 
 term = Terminal()
 
@@ -56,7 +56,8 @@ class Config(SimpleNamespace):
             )
         self.release_drafter = self.load_config(".github/release-drafter.yml")
 
-    def load_config(self, config_file):
+    @classmethod
+    def load_config(cls, config_file):
         config_file = os.path.expanduser(config_file)
         try:
             with open(config_file, "r") as stream:
@@ -70,14 +71,14 @@ class Config(SimpleNamespace):
             return {}
 
 
-class Tender(object):
+class Tender:
     def __init__(self, org, repo):
         self.cfg = Config()
         self.repo_name = repo
         self.org_name = org
         token = os.environ.get("HOMEBREW_GITHUB_API_TOKEN")
-        self.gh = Github(login_or_token=token)
-        self.repo = self.gh.get_repo(f"{org}/{repo}")
+        self.github = Github(login_or_token=token)
+        self.repo = self.github.get_repo(f"{org}/{repo}")
         self.pulls = self.repo.get_pulls(state="all")
 
         # required_labels is a list of labels from which at least one needs to
@@ -94,15 +95,15 @@ class Tender(object):
     def do_pulls(self):
         _logger.info("Auditing pull-requests")
         cnt = 0
-        for pr in self.pulls:
+        for pull in self.pulls:
             if cnt > 20:
                 sys.exit(1)
-            if not pr.is_merged() and pr.state == "closed":
+            if not pull.is_merged() and pull.state == "closed":
                 continue
             msg = "{}: [{}] {}".format(
-                link(pr.html_url, "PR #{}".format(pr.number)), pr.state, pr.title
+                link(pull.html_url, "PR #{}".format(pull.number)), pull.state, pull.title
             )
-            pr_labels = [p.name for p in pr.get_labels()]
+            pr_labels = [p.name for p in pull.get_labels()]
             if len(self.required_labels.intersection(pr_labels)) == 0:
                 msg += "\n\tShould have at least one label out of {} but found: {}".format(
                     ", ".join(self.required_labels), ", ".join(pr_labels)
@@ -110,7 +111,7 @@ class Tender(object):
                 print(msg)
                 cnt += 1
                 continue
-            if pr.is_merged():
+            if pull.is_merged():
                 pass
 
     def do_labels(self):
@@ -118,14 +119,14 @@ class Tender(object):
         _logger.info("Auditing repository labels")
         _logger.debug(self.cfg.labels)
         existing_labels = [x.name for x in self.repo.get_labels()]
-        for label, lv in self.cfg.labels.items():
+        for label, value in self.cfg.labels.items():
             if label not in existing_labels:
-                _logger.warning("Adding label '%s'" % label)
-                self.repo.create_label(label, lv.color, lv.description)
+                _logger.warning("Adding label '%s'", label)
+                self.repo.create_label(label, value.color, value.description)
         for label in self.repo.get_labels():
             if label.name in self.cfg.labels:
-                cl = self.cfg.labels[label.name]
-                if label.color != cl.color or label.description != cl.description:
+                cfg_label = self.cfg.labels[label.name]
+                if label.color != cfg_label.color or label.description != cfg_label.description:
                     _logger.warning("Updating label '%s' attributes", label.name)
                     label.update(
                         label.name,
@@ -144,9 +145,9 @@ def parsed(result):
 
     if hasattr(result, "text") and result.text[:4] == ")]}'":
         return json.loads(result.text[5:])
-    else:
-        print("ERROR: %s " % (result.result_code))
-        sys.exit(1)
+
+    print("ERROR: %s " % (result.result_code))
+    sys.exit(1)
 
 
 @click.group(
@@ -203,4 +204,4 @@ def labels(ctx):
 
 if __name__ == "__main__":
 
-    cli()
+    cli()  # pylint: disable=no-value-for-parameter
