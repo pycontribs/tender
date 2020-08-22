@@ -7,7 +7,7 @@ import os
 import sys
 from copy import deepcopy
 from types import SimpleNamespace
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import click
 import git
@@ -54,7 +54,8 @@ def nested_dict_to_namespaces(dic):
 class Config(SimpleNamespace):
     """Config."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
         self.labels = {}
         for label in self.load_config(".github/labels.yml"):
             self.labels[label["name"]] = SimpleNamespace(
@@ -83,17 +84,25 @@ class Tender:
 
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, org, repo):
-        self.cfg = Config()
+    def __init__(self, cfg: Config):
+        self.cfg = cfg
         self.git = git.Repo(".")
-        self.repo_name = repo
-        self.org_name = org
         token = os.environ.get("HOMEBREW_GITHUB_API_TOKEN")
         self.github = github.Github(login_or_token=token)
-        self.repo = self.github.get_repo(f"{org}/{repo}")
+        self.required_labels: Set[str] = set()
+        self.errors: List[str] = []
+
+        if not self.cfg.org or not self.cfg.repo:
+            url = git.repo.base.Repo().remotes.origin.url
+            gitrepo = giturlparse.parse(url)
+            self.cfg.org = gitrepo.owner
+            self.cfg.repo = gitrepo.name
+            # it.repo.fun.is_git_dir(".")
+            _logger.info(
+                "Detected %s/%s from context %s", self.cfg.org, self.cfg.repo, url
+            )
+        self.repo = self.github.get_repo(f"{self.cfg.org}/{self.cfg.repo}")
         self.pulls = self.repo.get_pulls(state="all")
-        self.required_labels = set()
-        self.errors = []
 
         # required_labels is a list of labels from which at least one needs to
         # be present on each PR, and only one.
@@ -102,7 +111,7 @@ class Tender:
             self.cfg.release_drafter.get("exclude-labels", DEFAULT_EXCLUDE_LABELS)
         )
 
-        self.label_section_map = dict()
+        self.label_section_map: Dict[str, str] = dict()
         for category in self.cfg.release_drafter["categories"]:
             if "labels" in category:
                 # self.required_labels.union(set(category["labels"]))
@@ -229,6 +238,7 @@ class Tender:
 
             if pull.merged:
 
+                _logger.debug("Doing %s: %s", pull.number, pull.title)
                 # ignoring commits
                 labels = {x.name for x in pull.labels}
                 if not self.exclude_labels.isdisjoint(labels):
@@ -292,6 +302,7 @@ def parsed(result):
 )
 @click.pass_context
 @click.option("--debug", "-d", default=False, help="Debug mode", is_flag=True)
+@click.option("--fix", "-f", default=False, help="Fix problems", is_flag=True)
 @click.option("--repo", "-r", default=None, help="GitHub Repository")
 @click.option("--org", "-o", default=None, help="GitHub Organization")
 @version_option(
@@ -300,7 +311,7 @@ def parsed(result):
     version_color="green",
     prog_name_color="yellow",
 )
-def cli(ctx, debug, repo, org):
+def cli(ctx, debug, **kwargs):  # pylint: disable=unused-argument
     handler = logging.StreamHandler()
     formatter = logging.Formatter("%(levelname)-8s %(message)s")
     handler.setFormatter(formatter)
@@ -311,16 +322,12 @@ def cli(ctx, debug, repo, org):
     else:
         _logger.setLevel(level=logging.INFO)
 
-    if not org or not repo:
-        url = git.repo.base.Repo().remotes.origin.url
-        gitrepo = giturlparse.parse(url)
-        org = gitrepo.owner
-        repo = gitrepo.name
-        # it.repo.fun.is_git_dir(".")
-        _logger.info("Detected %s/%s from context %s", org, repo, url)
-
     ctx.ensure_object(dict)
-    ctx.obj["app"] = Tender(org=org, repo=repo)
+    cfg = Config(**ctx.params)
+    # import pdb
+    # pdb.set_trace()
+
+    ctx.obj["app"] = Tender(cfg=cfg)
 
     if ctx.invoked_subcommand is None:
         # ctx.invoke(do_pulls)
