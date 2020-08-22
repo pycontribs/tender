@@ -129,6 +129,11 @@ class Tender:
             ", ".join(self.label_section_map.keys()),
         )
 
+        # do local cleanups to avoid accidents:
+
+        # drop any tags that do not exist on origin
+        os.system("git fetch --prune origin '+refs/tags/*:refs/tags/*'")
+
     def get_last_unreleased_tag(self) -> Optional[git.Tag]:
         for tag in sorted(
             self.git.tags, key=lambda t: t.commit.committed_datetime, reverse=True
@@ -211,12 +216,14 @@ class Tender:
     def do_draft(self):
         _logger.info("Draft release notes")
 
+        release_draft = None
         for release in self.repo.get_releases():
             print(
                 f"tag_name={release.tag_name} name={release.title} draft={release.draft}"
                 f" prerelease={release.prerelease}"
             )
             if release.draft:
+                release_draft = release
                 break
 
         body = "## Changes\n\n"
@@ -282,6 +289,21 @@ class Tender:
 
         release = None
         print(body)
+
+        if self.cfg.fix:
+            if release_draft:
+                # TODO(ssbarnea): Generate version and set "name"
+                if release_draft.body == body:
+                    _logger.info("Release body already in-sync, doing nothing.")
+                    return
+                _logger.info("Updating release body")
+                release_draft.update_release(name="Draft", message=body, draft=True)
+            else:
+                _logger.info("Creating new draft release")
+                self.repo.create_git_release(
+                    tag="", name="Draft", message=body, draft=True, prerelease=True
+                )
+            # set_trace()
 
 
 def parsed(result):
