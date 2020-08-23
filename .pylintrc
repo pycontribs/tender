@@ -3,11 +3,12 @@
 disable =
     bad-continuation, # https://github.com/PyCQA/pylint/issues/2944
     fixme,
-    # TODO(ssbarnea): remove temporary skips adding during initial adoption:
+    # TODO(ssbarnea): remove temporary skips added to speedup initial prototyping:
     import-error,
     missing-class-docstring,
     missing-function-docstring,
     missing-module-docstring,
     too-few-public-methods,
     too-many-branches,
+    too-many-locals,
     wrong-import-order,
