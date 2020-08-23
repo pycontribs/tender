@@ -4,7 +4,9 @@ import datetime
 import json
 import logging
 import os
+import re
 import sys
+import urllib
 from copy import deepcopy
 from types import SimpleNamespace
 from typing import Dict, List, Optional, Set
@@ -55,7 +57,19 @@ class Config(SimpleNamespace):
     """Config."""
 
     def __init__(self, **kwargs):
+        self.org = None
+        self.repo = None
+
         self.__dict__.update(kwargs)
+
+        if not self.org or not self.repo:
+            url = git.repo.base.Repo().remotes.origin.url
+            gitrepo = giturlparse.parse(url)
+            self.org = gitrepo.owner
+            self.repo = gitrepo.name
+            # it.repo.fun.is_git_dir(".")
+            _logger.info("Detected %s/%s from context %s", self.org, self.repo, url)
+
         self.labels = {}
         for label in self.load_config(".github/labels.yml"):
             self.labels[label["name"]] = SimpleNamespace(
@@ -63,21 +77,39 @@ class Config(SimpleNamespace):
             )
         self.release_drafter = self.load_config(".github/release-drafter.yml")
 
-    @classmethod
-    def load_config(cls, config_file):
-        config_file = os.path.expanduser(config_file)
-        try:
-            with open(config_file, "r") as stream:
+    def load_config(self, config_file):
+        def unique(sequence):
+            seen = set()
+            return [x for x in sequence if not (x in seen or seen.add(x))]
+
+        result = None
+        for location in unique(
+            [
+                os.path.expanduser(config_file),
+                f"https://raw.githubusercontent.com/{self.org}/meta/master/{config_file}",
+                f"https://raw.githubusercontent.com/pycontribs/meta/master/{config_file}",
+            ]
+        ):
+
+            try:
+                if re.match(r"https?://", location):
+                    stream = urllib.request.urlopen(location)
+                else:
+                    stream = open(location, "r")
                 try:
-                    return yaml.safe_load(stream)
+                    result = yaml.safe_load(stream)
                 except yaml.YAMLError as exc:
                     _logger.error(exc)
                     sys.exit(2)
-        except FileNotFoundError:
-            _logger.warning(
-                "Config file %s not found, defaulting to empty.", config_file
-            )
-            return {}
+            except urllib.error.HTTPError as error:
+                _logger.info("Config file %s not loaded due to %s", location, error)
+                continue
+            except FileNotFoundError:
+                _logger.info("Config file %s not found", location)
+                continue
+            _logger.info("Loaded %s", location)
+            return result
+        raise NotImplementedError("Unable to load any configuration file")
 
 
 class Tender:
@@ -92,15 +124,6 @@ class Tender:
         self.required_labels: Set[str] = set()
         self.errors: List[str] = []
 
-        if not self.cfg.org or not self.cfg.repo:
-            url = git.repo.base.Repo().remotes.origin.url
-            gitrepo = giturlparse.parse(url)
-            self.cfg.org = gitrepo.owner
-            self.cfg.repo = gitrepo.name
-            # it.repo.fun.is_git_dir(".")
-            _logger.info(
-                "Detected %s/%s from context %s", self.cfg.org, self.cfg.repo, url
-            )
         self.repo = self.github.get_repo(f"{self.cfg.org}/{self.cfg.repo}")
         self.pulls = self.repo.get_pulls(state="all")
 

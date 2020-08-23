@@ -27,6 +27,21 @@ Example of activities performed:
 
 ![screenshot](https://sbarnea.com/ss/Screen-Shot-2020-08-16-21-23-29.23.png)
 
+## Configuration
+
+By default the file tries to load the configuration files from local reposity
+and falls back to "meta" repository from the same organization. If these are
+also missing it will load them from [pycontribs/meta](https://github.com/pycontribs/meta/tree/master/.github)
+repository.
+
+Recognized config files:
+
+- [`.github/lables.yml`](https://github.com/pycontribs/meta/blob/master/.github/labels.yml)
+- [`.release-drafter.yml`](https://github.com/pycontribs/meta/blob/master/.github/release-drafter.yml)
+
+The file format is the same as the original tools, as tender is seen as a
+drop-in replacements for these.
+
 ## Background
 
 The project was inspired by existing tools like:
