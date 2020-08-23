@@ -1,4 +1,15 @@
 repos:
+  - repo: local
+    hooks:
+      - id: tender
+        name: Run tender as a pre-comit hook (dogfooding)
+        entry: ./bin/tender.sh
+        language: python
+        always_run: true
+        verbose: true
+        pass_filenames: false
+        stages:
+          - commit
   - repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.4.2
     hooks:
