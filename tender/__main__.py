@@ -262,13 +262,16 @@ class Tender:
                         )
                     else:
                         self.errors.append(
-                            "%s containes unknown labels %s, add one required labels %s."
+                            "%s contains unknown labels %s, add one required labels %s."
                             % (
                                 link(pull.html_url, "PR #{}".format(pull.number)),
                                 labels,
                                 self.required_labels,
                             )
                         )
+                    # remove processed commit from commits
+                    del commits[pull.merge_commit_sha]
+
                 elif pull.closed_at > no_older_than:
                     print(pull.closed_at, no_older_than)
                     _logger.warning(
@@ -282,6 +285,15 @@ class Tender:
                         "one merged before cutoff date."
                     )
                     break
+
+        # All commits for which we were not able to find a PR, likely direct pushes
+        for sha in commits:
+            commit = self.repo.get_commit(sha)
+            _logger.info(
+                "Commit '%s' not included. See %s",
+                commit.commit.message,
+                commit.html_url,
+            )
 
         for section, content in sections.items():
             if content:
