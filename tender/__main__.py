@@ -36,7 +36,7 @@ def link(url, name):
 
 def nested_dict_to_namespaces(dic):
     """Code for recursively converting dictionaries of dictionaries
-        into SimpleNamespaces instead.
+    into SimpleNamespaces instead.
     """
 
     def recurse(dic):
@@ -199,8 +199,10 @@ class Tender:
             )
             pr_labels = [p.name for p in pull.get_labels()]
             if len(self.required_labels.intersection(pr_labels)) == 0:
-                msg += "\n\tShould have at least one label out of {} but found: {}".format(
-                    ", ".join(self.required_labels), ", ".join(pr_labels)
+                msg += (
+                    "\n\tShould have at least one label out of {} but found: {}".format(
+                        ", ".join(self.required_labels), ", ".join(pr_labels)
+                    )
                 )
                 print(msg)
                 cnt += 1
