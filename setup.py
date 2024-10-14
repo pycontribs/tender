@@ -1,4 +1,5 @@
 """Kept for partial compatibility with old pip versions."""
+
 from setuptools import setup
 
 setup(
