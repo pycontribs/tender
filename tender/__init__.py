@@ -1,4 +1,5 @@
 """Tender Library"""
+
 from pkg_resources import DistributionNotFound, get_distribution
 
 try:
